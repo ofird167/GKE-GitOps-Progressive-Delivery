@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-apps-staging
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - env: staging
+            path: apps/overlays/staging
+            destNamespace: staging
+  template:
+    metadata:
+      name: '{{env}}-app'
+    spec:
+      project: platform-apps
+      source:
+        repoURL: "${GIT_REPO_URL}"
+        targetRevision: HEAD
+        path: '{{path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{destNamespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: platform-apps-production
+  namespace: argocd
+spec:
+  generators:
+    - list:
+        elements:
+          - env: production
+            path: apps/overlays/production
+            destNamespace: production
+  template:
+    metadata:
+      name: '{{env}}-app'
+    spec:
+      project: platform-apps
+      source:
+        repoURL: "${GIT_REPO_URL}"
+        targetRevision: HEAD
+        path: '{{path}}'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{destNamespace}}'
+      syncPolicy:
+        syncOptions:
+          - CreateNamespace=true

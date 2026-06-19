@@ -1,0 +1,6 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+data:
+  CONFIG_MAP_VAL: "DevOps Ops Hub Platform Config v1.0.0"

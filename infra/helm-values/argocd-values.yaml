@@ -1,0 +1,9 @@
+# argocd-values.yaml: Configures ArgoCD for High Availability (HA) mode.
+server:
+  replicas: 2
+repoServer:
+  replicas: 2
+# Disable TLS termination on ArgoCD server since Istio gateway handles it
+configs:
+  params:
+    server.insecure: "true"

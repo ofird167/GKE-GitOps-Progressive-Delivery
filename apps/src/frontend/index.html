@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kubernetes Cluster Operations Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Orbitron:wght@500;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=1.0.3">
+</head>
+<body>
+    <div class="glow-bg"></div>
+    <div class="glow-bg-secondary"></div>
+
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="logo-icon">⎈</span>
+                <h2>K8s Ops Hub</h2>
+            </div>
+            <nav class="nav-menu">
+                <button class="nav-item active" data-tab="status-tab">
+                    <span class="nav-icon">📊</span> Cluster Status
+                </button>
+                <button class="nav-item" data-tab="gitops-tab">
+                    <span class="nav-icon">🐙</span> GitOps & Pipeline
+                </button>
+                <button class="nav-item" data-tab="db-tab">
+                    <span class="nav-icon">💾</span> Database & PVC
+                </button>
+                <button class="nav-item" data-tab="diagnostics-tab">
+                    <span class="nav-icon">🧪</span> Canary Routing
+                </button>
+                <button class="nav-item" data-tab="console-tab">
+                    <span class="nav-icon">💻</span> Traffic Console
+                </button>
+            </nav>
+            <div class="sidebar-auth">
+                <div class="auth-title">🔒 API Access Auth</div>
+                <input type="password" id="api-token-input" placeholder="Enter API Key..." class="auth-input">
+                <div style="display: flex; gap: 0.5rem; width: 100%;">
+                    <button id="btn-save-token" class="btn btn-auth" style="flex-grow: 1;">Authenticate</button>
+                    <button id="btn-logout" class="btn btn-danger" style="flex-grow: 0; padding: 0.5rem 0.8rem; display: none;" title="Logout">Logout</button>
+                </div>
+            </div>
+            <div class="sidebar-footer">
+                <p>Namespace: <span class="env-badge" id="sidebar-ns">staging</span></p>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="header-title">
+                    <h1 id="page-title">Operations Control Panel</h1>
+                    <p class="subtitle">Real-time GKE telemetry and deployment verification</p>
+                </div>
+                <div class="connection-status">
+                    <span class="pulse-indicator status-green" id="global-status-dot"></span>
+                    <span id="global-status-text">Cluster Connected</span>
+                    <span class="env-badge" id="header-backend-version" style="margin-left: 10px; background-color: rgba(139, 92, 246, 0.1); color: var(--color-purple);">Backend: -</span>
+                    <span class="env-badge" id="header-frontend-status" style="margin-left: 5px; background-color: rgba(6, 182, 212, 0.1); color: var(--color-cyan);">Frontend: -</span>
+                </div>
+            </header>
+
+            <!-- Status Tab -->
+            <section id="status-tab" class="tab-content active">
+                <!-- Status Cards Grid -->
+                <div class="grid-layout cols-3">
+                    <div class="card stat-card glow-cyan">
+                        <div class="card-header">
+                            <span class="card-icon">💻</span>
+                            <h4>Ingress Controller IP</h4>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="stat-value" id="stat-ip">34.72.210.225</h3>
+                            <p class="card-meta">Google Cloud Load Balancer</p>
+                        </div>
+                    </div>
+                    <div class="card stat-card glow-purple">
+                        <div class="card-header">
+                            <span class="card-icon">🚀</span>
+                            <h4>Active API Version</h4>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="stat-value font-orbitron" id="stat-version">-</h3>
+                            <p class="card-meta">Active GKE Rollout tag</p>
+                        </div>
+                    </div>
+                    <div class="card stat-card glow-green">
+                        <div class="card-header">
+                            <span class="card-icon">⚡</span>
+                            <h4>Gateway Health</h4>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="stat-value text-success" id="stat-gateway-status">ONLINE</h3>
+                            <p class="card-meta">Istio ingress-envoy status</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-layout cols-2 mt-4">
+                    <!-- Pod list table -->
+                    <div class="card card-double">
+                        <h3>Namespace Pods Telemetry</h3>
+                        <p class="description">Live pods in GKE namespace `staging` queried via Kubernetes API server.</p>
+                        <div class="table-container">
+                            <table class="data-table" id="pods-table">
+                                <thead>
+                                    <tr>
+                                        <th>Pod Name</th>
+                                        <th>Status</th>
+                                        <th>Containers</th>
+                                        <th>Restarts</th>
+                                        <th>Istio Sidecar</th>
+                                        <th>Uptime</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pods-table-body">
+                                    <!-- Populated dynamically via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Local DNS Resolution Setup -->
+                    <div class="card">
+                        <h3>DNS & Hosts File Resolver</h3>
+                        <p class="description">Map the domain `app.local` to GKE external ingress IP in your local hosts file to load this page directly.</p>
+                        <div class="code-box">
+                            <code id="hosts-code">34.72.210.225 app.local</code>
+                            <button class="copy-btn" onclick="copyHostsText()">Copy</button>
+                        </div>
+                        <div class="alert-box info-box">
+                            <strong>Tip:</strong> Run <code>sudo echo "34.72.210.225 app.local" >> /etc/hosts</code>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- GitOps & Pipeline Tab -->
+            <section id="gitops-tab" class="tab-content">
+                <div class="grid-layout cols-3">
+                    <div class="card stat-card glow-green">
+                        <div class="card-header">
+                            <span class="card-icon">🔄</span>
+                            <h4>ArgoCD App Sync</h4>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="stat-value text-success">Synced</h3>
+                            <p class="card-meta">Auto-sync: enabled</p>
+                        </div>
+                    </div>
+                    <div class="card stat-card glow-blue">
+                        <div class="card-header">
+                            <span class="card-icon">🌿</span>
+                            <h4>Gitops Branch</h4>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="stat-value font-mono">main</h3>
+                            <p class="card-meta">Repo: interview11</p>
+                        </div>
+                    </div>
+                    <div class="card stat-card glow-purple">
+                        <div class="card-header">
+                            <span class="card-icon">🛠️</span>
+                            <h4>Last Build Status</h4>
+                        </div>
+                        <div class="card-body">
+                            <h3 class="stat-value text-success">Success</h3>
+                            <p class="card-meta">GitHub Actions run #21</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pipeline Visualizer -->
+                <div class="card mt-4">
+                    <h3>GitOps Deployment Flow</h3>
+                    <p class="description">The continuous delivery pipeline from local commit to GKE cluster execution.</p>
+                    <div class="pipeline-container">
+                        <div class="pipeline-step active">
+                            <div class="step-badge">1</div>
+                            <h5>Git Commit</h5>
+                            <span class="step-meta">Push to Git</span>
+                        </div>
+                        <div class="pipeline-connector active"></div>
+                        <div class="pipeline-step active">
+                            <div class="step-badge">2</div>
+                            <h5>Docker Registry</h5>
+                            <span class="step-meta">GCP Artifact Registry</span>
+                        </div>
+                        <div class="pipeline-connector active"></div>
+                        <div class="pipeline-step active">
+                            <div class="step-badge">3</div>
+                            <h5>ArgoCD Sync</h5>
+                            <span class="step-meta">Kubectl Controller</span>
+                        </div>
+                        <div class="pipeline-connector active"></div>
+                        <div class="pipeline-step active">
+                            <div class="step-badge">4</div>
+                            <h5>Istio Routing</h5>
+                            <span class="step-meta">Envoy Sidecar Mesh</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Database & PVC Tab -->
+            <section id="db-tab" class="tab-content">
+                <div class="grid-layout cols-2">
+                    <div class="card glow-blue">
+                        <h3>Dynamic Persistence Verification</h3>
+                        <p class="description">Write visits to the PostgreSQL database. Even if the database pod restarts, storage claims via the GKE PersistentVolume (PV/PVC) preserve transaction logs.</p>
+                        
+                        <div class="persistence-container">
+                            <div class="visit-display">
+                                <span class="visit-count" id="visit-counter">0</span>
+                                <span class="visit-label">PostgreSQL Database Recorded Visits</span>
+                            </div>
+                            <div class="action-buttons">
+                                <button class="btn btn-primary" id="btn-visit">Register New Visit</button>
+                                <button class="btn btn-danger" id="btn-reset-visits">Reset Log Table</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Persistence Infrastructure</h3>
+                        <table class="data-table">
+                            <tr>
+                                <td>Database Engine</td>
+                                <td class="font-mono text-glow">PostgreSQL 16.2</td>
+                            </tr>
+                            <tr>
+                                <td>Service Hostname</td>
+                                <td id="db-val-host" class="font-mono">-</td>
+                            </tr>
+                            <tr>
+                                <td>Database Name</td>
+                                <td id="db-val-name" class="font-mono">-</td>
+                            </tr>
+                            <tr>
+                                <td>User Privileges</td>
+                                <td id="db-val-user" class="font-mono text-success">-</td>
+                            </tr>
+                            <tr>
+                                <td>StorageClass Claim</td>
+                                <td class="font-mono text-glow">pd-balanced (GKE balanced SSD)</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Database Logs table -->
+                <div class="card mt-4">
+                    <h3>Recent Transactions Log</h3>
+                    <p class="description">Queries executed on PostgreSQL. Shows which GKE Pod handled each database write.</p>
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Transaction ID</th>
+                                    <th>Timestamp</th>
+                                    <th>Processed By (Pod Hostname)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="db-logs-body">
+                                <!-- Populated dynamically via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Canary Routing Tab -->
+            <section id="diagnostics-tab" class="tab-content">
+                <div class="grid-layout cols-2">
+                    <div class="card glow-purple">
+                        <h3>Canary Routing Playground</h3>
+                        <p class="description">Verify progressive canary splitting. Clicking below fires 100 requests. The Split Ratio displays traffic routing distribution between v1-stable (cyan) and v2-canary (magenta) managed by Ingress.</p>
+                        
+                        <div class="canary-dashboard">
+                            <div class="test-controls" style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem;">
+                                <div style="display: flex; align-items: center; gap: 1rem; width: 100%;">
+                                    <button class="btn btn-purple" id="btn-run-canary">Trigger 100 Requests</button>
+                                    <div id="canary-status" class="test-status-msg">Ready for execution.</div>
+                                </div>
+                                <label class="checkbox-container" style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--text-secondary); cursor: pointer; user-select: none;">
+                                    <input type="checkbox" id="chk-force-canary" style="cursor: pointer;">
+                                    <span>Force Canary Route (via <code>X-Canary: true</code> header)</span>
+                                </label>
+                            </div>
+                            
+                            <div class="split-visualizer">
+                                <div class="split-bar">
+                                    <div class="split-fill fill-stable" id="bar-stable" style="width: 50%;"></div>
+                                    <div class="split-fill fill-canary" id="bar-canary" style="width: 50%;"></div>
+                                </div>
+                                <div class="split-labels">
+                                    <span class="label-stable">v1-stable: <strong id="lbl-stable">50%</strong></span>
+                                    <span class="label-canary">v2-canary: <strong id="lbl-canary">50%</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card" id="card-rollout-control">
+                        <h3>Telemetry & Rollout Control</h3>
+                        <table class="data-table" style="margin-bottom: 1.25rem;">
+                            <tr>
+                                <td>Argo Rollout Status</td>
+                                <td><span class="status-badge badge-green" id="rollout-status">-</span></td>
+                            </tr>
+                            <tr>
+                                <td>Rollout Canary Step</td>
+                                <td id="rollout-step" class="font-mono">-</td>
+                            </tr>
+                            <tr>
+                                <td>Stable Route Weight</td>
+                                <td id="rollout-weight-stable" class="font-mono">-</td>
+                            </tr>
+                            <tr>
+                                <td>Canary Route Weight</td>
+                                <td id="rollout-weight-canary" class="font-mono">-</td>
+                            </tr>
+                            <tr>
+                                <td>Istio Route Annotations</td>
+                                <td class="font-mono text-glow">networking.istio.io/v1alpha3</td>
+                            </tr>
+                        </table>
+
+                        <!-- Version Switcher Input Panel -->
+                        <div class="version-switcher-panel" style="margin-bottom: 1.25rem; display: flex; gap: 0.5rem; align-items: center;">
+                            <input type="text" id="switch-version-input" placeholder="e.g. v2-canary" class="auth-input" style="flex-grow: 1; font-family: var(--font-mono); font-size: 0.85rem; padding: 0.6rem;">
+                            <button class="btn btn-purple" id="btn-switch-version" style="flex-grow: 0; padding: 0.6rem 1rem; font-size: 0.85rem;" title="Switch to custom version">Switch Version</button>
+                        </div>
+
+                        <div class="action-buttons" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem;">
+                            <button class="btn btn-primary" id="btn-deploy-canary" title="Deploy v2-canary at 20% traffic split">Deploy v2</button>
+                            <button class="btn btn-purple" id="btn-promote-canary" title="Promote v2 to 100% stable">Promote v2</button>
+                            <button class="btn btn-danger" id="btn-rollback-stable" title="Rollback 100% to v1-stable">Rollback v1</button>
+                            <button class="btn btn-danger" id="btn-rollback" title="Undo to previous revision (Argo Rollouts Undo)">Undo Rollback</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Traffic Console Tab -->
+            <section id="console-tab" class="tab-content">
+                <div class="card">
+                    <h3>Network Request Stream (Live Ingress Telemetry)</h3>
+                    <p class="description">Envoy proxy traffic logs from gateway routes. Trigger Canary Routing requests to stream active telemetry.</p>
+                    <div class="terminal-console" id="request-console" style="height: 500px;">
+                        <div class="console-line system-line">[SYSTEM] Terminal initialized. Waiting for traffic logs...</div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="app.js?v=1.0.3"></script>
+</body>
+</html>

@@ -1,0 +1,85 @@
+# Agent Communication & Behavior
+- Tone: Technical, objective, and concise. Skip greetings and meta-commentary.
+- Proactive Inquiry: If a task is ambiguous, do not guess. Provide two possible interpretations and ask for clarification before starting.
+- No Guessing: If a command requires a variable (like a folder name or ID), do not use placeholders like `<your-name>`. Ask me for the variable first. Once provided, give me the complete, ready-to-run sequence of commands.
+
+# Environment & Secrets (Strict)
+- Secrets Folder: All secrets/sensitive keys must reside in a `/secrets` directory, which is git-ignored.
+- `.env` Strategy: 
+    - Never hardcode infrastructure IDs (Docker ID, S3 bucket names, Repo URLs). 
+    - Always use environment variables. 
+    - For every new project/task, verify the existence of `.env` and `example.env`. If a new variable is needed, ask me for the value, update both files, and then proceed.
+    - Assume every environment is fresh; code/scripts must pull paths and IDs dynamically from `.env`.
+    - Zero Hardcoding: Absolutely no configuration variables should be hardcoded in any application or infrastructure files. Everything must be dynamic and customizable via the `.env` file. If a variable is missing or empty, it must gracefully fall back to a sensible default.
+- Logging: All logs must be written to a git-ignored `/logs` folder. Ensure no sensitive information (keys, specific IDs, internal IPs) is ever printed to stdout or log files. Mask sensitive strings.
+
+# Terraform & Infrastructure
+- Granular Architecture: Break Terraform into single-purpose files (e.g., `providers.tf`, `variables.tf`, `backend.tf`, `main.tf`, `outputs.tf`). Even single-resource configs should get their own file if it improves micromanagement.
+- Outputs: Every Terraform implementation must include an `outputs.tf` that exposes vital connectivity info, specifically:
+    - Public/Private IP addresses.
+    - Load Balancer DNS names.
+    - Service endpoints.
+    - Resource IDs (e.g., S3 Bucket ARNs).
+- Validation: Before suggesting a plan, always suggest running `terraform validate` and `tflint`.
+
+# Security & Guardrails
+- Confirmation: Ask for explicit confirmation before executing destructive actions (`rm -rf`, `sudo`, database drops, or applying Terraform plans to production).
+- Code Standards: 
+    - TypeScript: Use `strict` mode. 
+    - Error Handling: All external API/Terraform calls must be wrapped in `try/catch` with logging.
+    - Formatting: Code blocks should be provided in full (no snippets) for copy-pasting, unless the file exceeds 500 lines.
+
+# Infrastructure & Terraform Best Practices
+- Granularity: Break files down (providers, variables, backend, main, outputs).
+- Outputs: Every module MUST output:
+    - Connectivity Commands: Include the `aws eks update-kubeconfig` command for EKS clusters.
+    - Endpoints: Provide public/private IPs or DNS names for all load balancers/services.
+    - Resource IDs: Output critical ARNs or IDs for cross-reference.
+- Tagging: All resources must be tagged with `Environment`, `Owner`, and `ManagedBy: Terraform`.
+- State Safety: For AWS projects, prefer remote backends with DynamoDB locking. If local, add a warning to the `outputs.tf` about state file location.
+
+# Environment & Variable Management (STRICT)
+
+## 1. Prohibition on Hardcoding
+- **NEVER** include hardcoded configuration values (IDs, usernames, bucket names, repo paths, Git repo URLs) inside `.tf`, `.ts`, `.py`, `.js`, or Kubernetes manifests.
+- **NEVER** assign `default` values to variables in `variables.tf` if those values are environment-specific (like `owner`, `docker_id`, etc.).
+- **Necessary Exceptions:** If a configuration value must remain hardcoded due to architectural constraints (such as a local DNS name like `app.local`), you must document it explicitly in the `README.md` or `readmeTL;DR.md` so users know how and where to customize it.
+- **Pre-Commit Check:** Before committing and pushing, double-check that there are absolutely no hardcoded environment-specific configurations anywhere in the codebase.
+
+## 2. The `.env` Protocol
+- If a script or file requires a variable, check `example.env` first. If it is missing, ask the user for the value, and then update both `.env` and `example.env`.
+- **example.env Hygiene:** The `example.env` must have all environment-specific values (e.g., secrets, project IDs, Git repository URLs, registry paths, specific user/bucket names) left completely blank. Only generic, non-sensitive infrastructure defaults (like ports, local IPs, regions, zones) may be populated.
+
+## 3. Terraform Variable Injection (Mandatory Workflow)
+- For Terraform, the agent must use the `TF_VAR_` prefix pattern for environment-specific variables.
+- When suggesting commands, the agent must assume the user uses the following pattern:
+    1. Load environment: `export $(grep -v '^#' .env | xargs)`
+    2. Map variables: `export TF_VAR_owner=$OWNER` (and so on)
+    3. Execute: `terraform <cmd>`
+- The agent must output this execution pattern as the standard way to run infrastructure.
+
+## 4. Verification Logic
+- Before generating code, the agent should simulate the execution: "If I clone this repo to a fresh machine, will it run without me editing code files?"
+- Assume that the repository will be cloned into a completely fresh environment. Every local/static resource reference (such as GCP Project IDs, Docker Registry paths, Docker IDs, image names, database details, Git repository URLs, GCS bucket names) must be fully dynamic and controlled via `.env`.
+- If the answer is no, the agent must refactor the code to pull from `process.env` (for Node) or `var.<name>` (for Terraform) using the `TF_VAR_` injection.
+
+## 5. Dynamic Default Fallbacks
+- All configurations and scripts must support dynamic fallbacks to sensible defaults if environment-specific variables are omitted or left blank/empty in the `.env` file (e.g., dynamically generating a cluster name if the variable is empty), ensuring zero hardcoding while maintaining ease of deployment.
+
+# Project Bootstrapping Standards
+- Every new project/repository initialized or created must contain:
+    - A `.gitignore` file.
+    - A comprehensive `README.md`.
+    - A concise `readmeTL;DR.md` file.
+    - An `MIT` License file.
+
+# CI/CD & Pipeline Standards
+- **Modular CI Scripts:** When writing pipelines (Jenkins, GitHub Actions), avoid bloated configuration files. Move complex linting, testing, and deployment commands into standalone, modular shell scripts (e.g., `scripts/lint.sh`, `scripts/scan.sh`).
+- **Standardized Logging:** Always use a consistent logging format (`[INFO]`, `[WARN]`, `[ERROR]`) in scripts, and mask sensitive variables (like DB passwords or API tokens) using stream editors like `sed` in the execution flow.
+- **Fail-Fast & Parallelism:** Design pipelines to execute independent stages (lint, test, static analysis) in parallel and fail early if any step returns a non-zero exit code.
+
+# Containerization (Docker)
+- **Multi-Stage Builds:** Always write Dockerfiles using secure, multi-stage builds. Copy only the final runtime dependencies and binaries into minimal production base images (e.g., `alpine`, `distroless`).
+
+# Documentation & Architecture
+- **Mermaid Diagrams:** When introducing complex system designs, pipeline stages, or traffic routing policies (e.g., Istio canary routes, Gateway API resources), always embed a Mermaid flowchart or sequence diagram in the `README.md`.

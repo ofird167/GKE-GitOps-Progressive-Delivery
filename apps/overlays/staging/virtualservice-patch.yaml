@@ -1,0 +1,48 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: app-virtualservice
+spec:
+  http:
+    - name: canary-header
+      match:
+        - headers:
+            X-Canary:
+              exact: "true"
+          uri:
+            prefix: /api/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: backend-canary-service
+            port:
+              number: 5000
+    - name: primary
+      match:
+        - uri:
+            prefix: /api/
+      rewrite:
+        uri: /
+      route:
+        - destination:
+            host: backend-service
+            port:
+              number: 5000
+          weight: 90
+        - destination:
+            host: backend-canary-service
+            port:
+              number: 5000
+          weight: 10
+      fault:
+        delay:
+          percentage:
+            value: 20.0
+          fixedDelay: 3s
+    - name: frontend
+      route:
+        - destination:
+            host: frontend-service
+            port:
+              number: 80

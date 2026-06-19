@@ -1,0 +1,26 @@
+# Secrets and Credentials
+/secrets/
+.env
+.env.*
+
+# Logs
+/logs/
+*.log
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+crash.log
+
+# OS & IDE
+.DS_Store
+.idea/
+.vscode/
+node_modules/
+dist/
+.venv/
+__pycache__/
+kubectl-argo-rollouts-linux-amd64
+apps/src/backend/kubectl-argo-rollouts-linux-amd64

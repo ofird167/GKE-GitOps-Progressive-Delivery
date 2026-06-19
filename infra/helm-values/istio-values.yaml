@@ -1,0 +1,11 @@
+pilot:
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1024Mi
+    limits:
+      cpu: 1000m
+      memory: 2048Mi
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1

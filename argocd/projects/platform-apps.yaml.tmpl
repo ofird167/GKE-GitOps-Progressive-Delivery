@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform-apps
+  namespace: argocd
+spec:
+  description: "GitOps Application Project for Staging and Production"
+  sourceRepos:
+    - "${GIT_REPO_URL}"
+  destinations:
+    - namespace: staging
+      server: https://kubernetes.default.svc
+    - namespace: production
+      server: https://kubernetes.default.svc
+  syncWindows:
+    - kind: deny
+      schedule: "0 0 * * 6"
+      duration: "48h"
+      namespaces:
+        - production
+      applications:
+        - production-app
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  roles:
+    - name: read-only
+      description: Read-only access for developers
+      policies:
+        - p, proj:platform-apps:read-only, applications, get, platform-apps/*, allow
+    - name: deploy
+      description: Deployment role for CI pipelines
+      policies:
+        - p, proj:platform-apps:deploy, applications, sync, platform-apps/*, allow
+        - p, proj:platform-apps:deploy, applications, get, platform-apps/*, allow

@@ -1,0 +1,13 @@
+{
+  "name": "operations-control-panel-backend",
+  "version": "1.0.0",
+  "description": "API Backend for Operations Control Panel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.5"
+  }
+}

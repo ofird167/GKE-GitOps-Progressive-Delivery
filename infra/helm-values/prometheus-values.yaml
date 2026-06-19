@@ -1,0 +1,7 @@
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelix: false
+    podMonitorSelectorNilUsesHelix: false
+    ruleSelectorNilUsesHelix: false
+grafana:
+  enabled: true
