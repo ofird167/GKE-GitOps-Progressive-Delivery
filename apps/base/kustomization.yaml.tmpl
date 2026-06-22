@@ -9,3 +9,11 @@ resources:
   - frontend.yaml
   - ingress.yaml
   - policies.yaml
+
+images:
+  - name: backend
+    newName: ${GAR_URL}/backend
+    newTag: latest
+  - name: frontend
+    newName: ${GAR_URL}/frontend
+    newTag: latest

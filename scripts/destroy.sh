@@ -38,7 +38,7 @@ GCP_ZONE="${GCP_ZONE:-us-central1-a}"
 GKE_CLUSTER_NAME="${GKE_CLUSTER_NAME:-devops}"
 DB_USER="${DB_USER:-dbadmin}"
 DB_NAME="${DB_NAME:-app_db}"
-owner="${owner:-ofir}"
+owner="${OWNER:-${owner:-ofir}}"
 environment="${environment:-production}"
 
 # Redirect output with DB password masking

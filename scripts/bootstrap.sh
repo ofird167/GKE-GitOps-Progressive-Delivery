@@ -33,7 +33,7 @@ GCP_ZONE="${GCP_ZONE:-us-central1-a}"
 GKE_CLUSTER_NAME="${GKE_CLUSTER_NAME:-devops}"
 DB_USER="${DB_USER:-dbadmin}"
 DB_NAME="${DB_NAME:-app_db}"
-owner="${owner:-ofir}"
+owner="${OWNER:-${owner:-ofir}}"
 environment="${environment:-production}"
 
 # Redirect stdout/stderr to log file with secret masking
@@ -114,7 +114,7 @@ if [ -n "${GIT_PAT:-}" ]; then
   kubectl create secret generic interview11-repo \
     -n argocd \
     --from-literal=url="${GIT_REPO_URL}" \
-    --from-literal=username="ofird167" \
+    --from-literal=username="${GIT_USERNAME:-ofird167}" \
     --from-literal=password="${GIT_PAT}" \
     --dry-run=client -o yaml | kubectl apply -f -
   kubectl label secret interview11-repo -n argocd argocd.argoproj.io/secret-type=repository --overwrite
@@ -137,26 +137,17 @@ log_info "Rendering template configurations..."
 export GCP_PROJECT_ID
 export GIT_REPO_URL
 
+# Render templates
+export GAR_URL
 envsubst < "${WORKSPACE_DIR}/apps/base/secret-store.yaml.tmpl" > "${WORKSPACE_DIR}/apps/base/secret-store.yaml"
 envsubst < "${WORKSPACE_DIR}/argocd/projects/platform-apps.yaml.tmpl" > "${WORKSPACE_DIR}/argocd/projects/platform-apps.yaml"
 envsubst < "${WORKSPACE_DIR}/argocd/appsets/platform-apps-appset.yaml.tmpl" > "${WORKSPACE_DIR}/argocd/appsets/platform-apps-appset.yaml"
-
-# Update image tags in base/kustomization.yaml to point to GAR
-cat << EOF >> "${WORKSPACE_DIR}/apps/base/kustomization.yaml"
-
-images:
-  - name: backend
-    newName: ${GAR_URL}/backend
-    newTag: latest
-  - name: frontend
-    newName: ${GAR_URL}/frontend
-    newTag: latest
-EOF
+envsubst < "${WORKSPACE_DIR}/apps/base/kustomization.yaml.tmpl" > "${WORKSPACE_DIR}/apps/base/kustomization.yaml"
 
 log_info "Committing configurations and pushing to GitOps repository..."
 # Configure git if needed
-git config user.name "ofird167"
-git config user.email "ofirrdd@gmail.com"
+git config user.name "${GIT_USERNAME:-ofird167}"
+git config user.email "${GIT_EMAIL:-ofirrdd@gmail.com}"
 
 # Ensure we track staging and production overlay directories
 git add .
