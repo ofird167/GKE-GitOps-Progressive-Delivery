@@ -9,3 +9,11 @@ resources:
   - frontend.yaml
   - ingress.yaml
   - policies.yaml
+
+images:
+  - name: backend
+    newName: us-central1-docker.pkg.dev/ofirdevops/devops-repo/backend
+    newTag: latest
+  - name: frontend
+    newName: us-central1-docker.pkg.dev/ofirdevops/devops-repo/frontend
+    newTag: latest
