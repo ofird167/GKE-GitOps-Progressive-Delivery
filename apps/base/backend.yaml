@@ -34,12 +34,17 @@ spec:
             - containerPort: 5000
           env:
             - name: APP_VERSION
-              value: "v1-stable"
+              value: "v2-canary"
             - name: CONFIG_MAP_VAL
               valueFrom:
                 configMapKeyRef:
                   name: app-config
                   key: CONFIG_MAP_VAL
+            - name: INGRESS_IP
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: INGRESS_IP
             - name: DB_USER
               valueFrom:
                 secretKeyRef:

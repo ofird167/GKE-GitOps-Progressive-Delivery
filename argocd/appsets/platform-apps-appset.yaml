@@ -15,6 +15,11 @@ spec:
       name: '{{env}}-app'
     spec:
       project: platform-apps
+      ignoreDifferences:
+        - group: networking.istio.io
+          kind: VirtualService
+          jsonPointers:
+            - /spec/http/1/route
       source:
         repoURL: "https://github.com/ofird167/interview11.git"
         targetRevision: HEAD
@@ -46,6 +51,11 @@ spec:
       name: '{{env}}-app'
     spec:
       project: platform-apps
+      ignoreDifferences:
+        - group: networking.istio.io
+          kind: VirtualService
+          jsonPointers:
+            - /spec/http/1/route
       source:
         repoURL: "https://github.com/ofird167/interview11.git"
         targetRevision: HEAD

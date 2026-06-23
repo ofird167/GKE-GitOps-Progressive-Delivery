@@ -1,7 +1,7 @@
 // app.js: Redesigned Frontend Controller for GKE Ops Hub Control Panel
 
 const API_BASE = (window.location.protocol === 'file:' || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://34.72.210.225/api'
+    ? 'http://app.local/api'
     : '/api';
 
 let backendVersion = '-';
@@ -117,6 +117,17 @@ async function fetchSystemStatus() {
         
         if (!response.ok) throw new Error('API unreachable');
         const data = await response.json();
+        
+        // Update Ingress IP display dynamically from backend environment values
+        const ingressIp = (data.environment && data.environment.INGRESS_IP) || '';
+        if (ingressIp) {
+            const statIpVal = document.getElementById('stat-ip');
+            if (statIpVal) statIpVal.textContent = ingressIp;
+            const hostsCodeVal = document.getElementById('hosts-code');
+            if (hostsCodeVal) hostsCodeVal.textContent = `${ingressIp} app.local`;
+            const hostsTipVal = document.getElementById('hosts-tip');
+            if (hostsTipVal) hostsTipVal.textContent = `sudo echo "${ingressIp} app.local" >> /etc/hosts`;
+        }
         
         // Update top status indicator
         document.getElementById('global-status-dot').className = 'pulse-indicator status-green';

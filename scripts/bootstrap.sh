@@ -104,6 +104,23 @@ helm upgrade --install istiod istio/istiod -n istio-system \
 helm upgrade --install istio-ingress istio/gateway -n istio-system \
   -f "${WORKSPACE_DIR}/infra/helm-values/istio-ingress-values.yaml" --wait
 
+log_info "Waiting for Istio Ingress Gateway external IP allocation..."
+INGRESS_IP=""
+for i in {1..30}; do
+  INGRESS_IP=$(kubectl get svc -n istio-system istio-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
+  if [ -n "${INGRESS_IP}" ]; then
+    break
+  fi
+  sleep 10
+done
+
+if [ -z "${INGRESS_IP}" ]; then
+  log_error "Failed to retrieve Ingress Gateway external IP. Falling back to placeholder."
+  INGRESS_IP="PENDING"
+fi
+export INGRESS_IP
+log_info "Allocated Ingress IP: ${INGRESS_IP}"
+
 log_info "Installing ArgoCD..."
 helm repo add argo https://argoproj.github.io/argo-helm
 helm repo update
@@ -145,6 +162,7 @@ envsubst < "${WORKSPACE_DIR}/apps/base/secret-store.yaml.tmpl" > "${WORKSPACE_DI
 envsubst < "${WORKSPACE_DIR}/argocd/projects/platform-apps.yaml.tmpl" > "${WORKSPACE_DIR}/argocd/projects/platform-apps.yaml"
 envsubst < "${WORKSPACE_DIR}/argocd/appsets/platform-apps-appset.yaml.tmpl" > "${WORKSPACE_DIR}/argocd/appsets/platform-apps-appset.yaml"
 envsubst < "${WORKSPACE_DIR}/apps/base/kustomization.yaml.tmpl" > "${WORKSPACE_DIR}/apps/base/kustomization.yaml"
+envsubst < "${WORKSPACE_DIR}/apps/base/configmap.yaml.tmpl" > "${WORKSPACE_DIR}/apps/base/configmap.yaml"
 
 log_info "Committing configurations and pushing to GitOps repository..."
 # Configure git if needed
@@ -168,15 +186,7 @@ log_info "Applying GitOps Application configuration..."
 kubectl apply -f "${WORKSPACE_DIR}/argocd/projects/platform-apps.yaml"
 kubectl apply -f "${WORKSPACE_DIR}/argocd/appsets/platform-apps-appset.yaml"
 
-log_info "Bootstrap complete! Fetching External Ingress IP..."
-INGRESS_IP=""
-for i in {1..30}; do
-  INGRESS_IP=$(kubectl get svc -n istio-system istio-ingress -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-  if [ -n "${INGRESS_IP}" ]; then
-    break
-  fi
-  sleep 10
-done
+log_info "Bootstrap complete!"
 
 echo "------------------------------------------------------------"
 echo " BOOTSTRAP COMPLETE"

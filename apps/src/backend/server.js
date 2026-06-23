@@ -294,7 +294,9 @@ async function initDb() {
   }
 }
 
-initDb();
+if (require.main === module) {
+  initDb();
+}
 
 // 1. Healthcheck Endpoint
 app.get('/health', async (req, res) => {
@@ -328,6 +330,7 @@ app.get('/status', async (req, res) => {
     version: appVersion,
     environment: {
       CONFIG_MAP_VAL: process.env.CONFIG_MAP_VAL || 'Default Config Value',
+      INGRESS_IP: process.env.INGRESS_IP || '',
       SECRET_DB_PASSWORD_SET: isDbPasswordSet
     },
     database: {
@@ -534,6 +537,10 @@ app.use((req, res) => {
   res.redirect('/');
 });
 
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Backend API version ${appVersion} listening on port ${port}`);
-});
+if (require.main === module) {
+  app.listen(port, '0.0.0.0', () => {
+    console.log(`Backend API version ${appVersion} listening on port ${port}`);
+  });
+}
+
+module.exports = { formatAge };
