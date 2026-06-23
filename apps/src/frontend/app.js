@@ -133,6 +133,31 @@ async function fetchSystemStatus() {
         document.getElementById('global-status-dot').className = 'pulse-indicator status-green';
         document.getElementById('global-status-text').textContent = 'Cluster Connected';
         
+        // Update GitHub Actions Build Status dynamically
+        if (data.githubBuild) {
+            const buildStatusVal = document.getElementById('build-status-val');
+            const buildRunVal = document.getElementById('build-run-val');
+            if (buildStatusVal && buildRunVal) {
+                const statusStr = data.githubBuild.status || 'unknown';
+                const displayStatus = statusStr.charAt(0).toUpperCase() + statusStr.slice(1).toLowerCase();
+                buildStatusVal.textContent = displayStatus;
+                
+                if (statusStr === 'success' || statusStr === 'completed') {
+                    buildStatusVal.className = 'stat-value text-success';
+                } else if (statusStr === 'in_progress' || statusStr === 'queued' || statusStr === 'waiting' || statusStr === 'queued') {
+                    buildStatusVal.className = 'stat-value text-warning';
+                } else {
+                    buildStatusVal.className = 'stat-value text-danger';
+                }
+                
+                if (data.githubBuild.runNumber) {
+                    buildRunVal.textContent = `GitHub Actions run #${data.githubBuild.runNumber}`;
+                } else {
+                    buildRunVal.textContent = 'No GitHub Actions runs';
+                }
+            }
+        }
+        
         backendVersion = data.version || 'v1-stable';
         document.getElementById('header-backend-version').textContent = `Backend: ${backendVersion}`;
         document.getElementById('header-backend-version').style.backgroundColor = 'rgba(139, 92, 246, 0.1)';

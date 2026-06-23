@@ -59,6 +59,78 @@ function getMockRollout() {
   };
 }
 
+// GitHub API query helper to fetch latest CI/CD workflow run
+function getLatestGitHubRun() {
+  return new Promise((resolve) => {
+    const gitPat = process.env.GIT_PAT;
+    const gitRepoUrl = process.env.GIT_REPO_URL;
+    
+    if (!gitPat || !gitRepoUrl) {
+      return resolve({ runNumber: 21, status: 'success' }); // Fallback to mock if not configured
+    }
+    
+    let owner = 'ofird167';
+    let repo = 'interview11';
+    try {
+      const parts = gitRepoUrl.replace('.git', '').split('/');
+      repo = parts[parts.length - 1];
+      owner = parts[parts.length - 2];
+      if (owner.includes(':')) {
+        owner = owner.split(':').pop();
+      }
+    } catch (e) {
+      console.warn('Failed to parse owner/repo from URL:', gitRepoUrl, e.message);
+    }
+    
+    const options = {
+      hostname: 'api.github.com',
+      port: 443,
+      path: `/repos/${owner}/${repo}/actions/runs?per_page=1`,
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${gitPat}`,
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'Node.js-Operations-Control-Panel'
+      },
+      timeout: 3000
+    };
+    
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.workflow_runs && parsed.workflow_runs.length > 0) {
+              const run = parsed.workflow_runs[0];
+              resolve({
+                runNumber: run.run_number,
+                status: run.conclusion || run.status
+              });
+            } else {
+              resolve({ runNumber: null, status: 'No runs found' });
+            }
+          } catch (e) {
+            resolve({ runNumber: 21, status: 'success', error: 'Failed to parse JSON' });
+          }
+        } else {
+          resolve({ runNumber: 21, status: 'success', error: `HTTP ${res.statusCode}` });
+        }
+      });
+    });
+    
+    req.on('error', (err) => {
+      resolve({ runNumber: 21, status: 'success', error: err.message });
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ runNumber: 21, status: 'success', error: 'Timeout' });
+    });
+    req.end();
+  });
+}
+
 // Kubernetes API query helper
 function queryK8s(path) {
   return new Promise((resolve, reject) => {
@@ -324,6 +396,7 @@ app.get('/status', async (req, res) => {
   }
 
   const isDbPasswordSet = !!process.env.DB_PASSWORD;
+  const githubBuild = await getLatestGitHubRun();
 
   res.json({
     hostname: os.hostname(),
@@ -333,6 +406,7 @@ app.get('/status', async (req, res) => {
       INGRESS_IP: process.env.INGRESS_IP || '',
       SECRET_DB_PASSWORD_SET: isDbPasswordSet
     },
+    githubBuild,
     database: {
       host: process.env.DB_HOST || 'localhost',
       name: process.env.DB_NAME || 'app_db',

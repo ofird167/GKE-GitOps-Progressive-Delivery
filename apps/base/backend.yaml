@@ -45,6 +45,18 @@ spec:
                 configMapKeyRef:
                   name: app-config
                   key: INGRESS_IP
+            - name: GIT_PAT
+              valueFrom:
+                secretKeyRef:
+                  name: gitops-credentials
+                  key: git-pat
+                  optional: true
+            - name: GIT_REPO_URL
+              valueFrom:
+                secretKeyRef:
+                  name: gitops-credentials
+                  key: git-repo-url
+                  optional: true
             - name: DB_USER
               valueFrom:
                 secretKeyRef:

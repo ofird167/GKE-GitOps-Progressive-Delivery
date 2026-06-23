@@ -181,6 +181,18 @@ kubectl label namespace staging istio-injection=enabled --overwrite
 kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
 kubectl label namespace production istio-injection=enabled --overwrite
 
+if [ -n "${GIT_PAT:-}" ] && [ -n "${GIT_REPO_URL:-}" ]; then
+  log_info "Creating application GitOps credentials secrets in staging and production..."
+  kubectl create secret generic gitops-credentials -n staging \
+    --from-literal=git-pat="${GIT_PAT}" \
+    --from-literal=git-repo-url="${GIT_REPO_URL}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+  kubectl create secret generic gitops-credentials -n production \
+    --from-literal=git-pat="${GIT_PAT}" \
+    --from-literal=git-repo-url="${GIT_REPO_URL}" \
+    --dry-run=client -o yaml | kubectl apply -f -
+fi
+
 # 6. Apply AppProject and ApplicationSet to ArgoCD
 log_info "Applying GitOps Application configuration..."
 kubectl apply -f "${WORKSPACE_DIR}/argocd/projects/platform-apps.yaml"
