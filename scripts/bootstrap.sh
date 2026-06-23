@@ -91,7 +91,9 @@ helm repo add external-secrets https://charts.external-secrets.io
 helm repo update
 helm upgrade --install external-secrets external-secrets/external-secrets \
   -n external-secrets --create-namespace \
-  -f "${WORKSPACE_DIR}/infra/helm-values/external-secrets-values.yaml" --wait
+  -f "${WORKSPACE_DIR}/infra/helm-values/external-secrets-values.yaml" \
+  --set serviceAccount.annotations."iam\.gke\.io/gcp-service-account"="devops-eso-sa@${GCP_PROJECT_ID}.iam.gserviceaccount.com" \
+  --wait
 
 log_info "Installing Istio Service Mesh (Base, Control Plane, Ingress)..."
 helm repo add istio https://istio-release.storage.googleapis.com/charts
@@ -153,6 +155,13 @@ git config user.email "${GIT_EMAIL:-ofirrdd@gmail.com}"
 git add .
 git commit -m "Initialize DevOps platform with GKE and GitOps" || true
 git push -u origin main
+
+# Create namespaces and enable Istio injection before deploying applications
+kubectl create namespace staging --dry-run=client -o yaml | kubectl apply -f -
+kubectl label namespace staging istio-injection=enabled --overwrite
+
+kubectl create namespace production --dry-run=client -o yaml | kubectl apply -f -
+kubectl label namespace production istio-injection=enabled --overwrite
 
 # 6. Apply AppProject and ApplicationSet to ArgoCD
 log_info "Applying GitOps Application configuration..."
