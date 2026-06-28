@@ -167,6 +167,12 @@ async function fetchSystemStatus() {
         document.getElementById('stat-version').textContent = backendVersion;
         document.getElementById('stat-gateway-status').textContent = 'ONLINE';
         document.getElementById('stat-gateway-status').className = 'stat-value text-success';
+
+        // Update repo name dynamically
+        const gitopsRepoVal = document.getElementById('gitops-repo-val');
+        if (gitopsRepoVal && data.repoName) {
+            gitopsRepoVal.textContent = `Repo: ${data.repoName}`;
+        }
         
         // Update DB cards info
         document.getElementById('db-val-host').textContent = data.database.host || '-';

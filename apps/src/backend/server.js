@@ -59,6 +59,26 @@ function getMockRollout() {
   };
 }
 
+// Helper to parse owner and repo from Git URL
+function getRepoDetails(gitRepoUrl) {
+  let owner = 'ofird167';
+  let repo = 'GKE-GitOps-Progressive-Delivery';
+  if (gitRepoUrl) {
+    try {
+      const parts = gitRepoUrl.replace('.git', '').split('/');
+      repo = parts[parts.length - 1];
+      let o = parts[parts.length - 2];
+      if (o.includes(':')) {
+        o = o.split(':').pop();
+      }
+      if (o) owner = o;
+    } catch (e) {
+      console.warn('Failed to parse owner/repo from URL:', gitRepoUrl, e.message);
+    }
+  }
+  return { owner, repo };
+}
+
 // GitHub API query helper to fetch latest CI/CD workflow run
 function getLatestGitHubRun() {
   return new Promise((resolve) => {
@@ -69,18 +89,7 @@ function getLatestGitHubRun() {
       return resolve({ runNumber: 21, status: 'success' }); // Fallback to mock if not configured
     }
     
-    let owner = 'ofird167';
-    let repo = 'interview11';
-    try {
-      const parts = gitRepoUrl.replace('.git', '').split('/');
-      repo = parts[parts.length - 1];
-      owner = parts[parts.length - 2];
-      if (owner.includes(':')) {
-        owner = owner.split(':').pop();
-      }
-    } catch (e) {
-      console.warn('Failed to parse owner/repo from URL:', gitRepoUrl, e.message);
-    }
+    const { owner, repo } = getRepoDetails(gitRepoUrl);
     
     const options = {
       hostname: 'api.github.com',
@@ -398,9 +407,13 @@ app.get('/status', async (req, res) => {
   const isDbPasswordSet = !!process.env.DB_PASSWORD;
   const githubBuild = await getLatestGitHubRun();
 
+  const gitRepoUrl = process.env.GIT_REPO_URL;
+  const { repo: repoName } = getRepoDetails(gitRepoUrl);
+
   res.json({
     hostname: os.hostname(),
     version: appVersion,
+    repoName,
     environment: {
       CONFIG_MAP_VAL: process.env.CONFIG_MAP_VAL || 'Default Config Value',
       INGRESS_IP: process.env.INGRESS_IP || '',

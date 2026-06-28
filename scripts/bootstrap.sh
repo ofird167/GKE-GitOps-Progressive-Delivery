@@ -27,6 +27,32 @@ else
   exit 1
 fi
 
+# Validate required environment variables
+REQUIRED_VARS=(
+  "GCP_PROJECT_ID"
+  "GCS_BUCKET_NAME"
+  "DB_PASSWORD"
+  "BACKEND_API_KEY"
+  "GIT_REPO_URL"
+  "GIT_PAT"
+)
+
+MISSING_VARS=()
+for var in "${REQUIRED_VARS[@]}"; do
+  if [ -z "${!var:-}" ]; then
+    MISSING_VARS+=("${var}")
+  fi
+done
+
+if [ ${#MISSING_VARS[@]} -ne 0 ]; then
+  echo "[ERROR] The following required environment variables are not set in ${ENV_FILE}:" >&2
+  for var in "${MISSING_VARS[@]}"; do
+    echo "  - ${var}" >&2
+  done
+  echo "Please populate these values before running the bootstrap script." >&2
+  exit 1
+fi
+
 # Fallback values
 GCP_REGION="${GCP_REGION:-us-central1}"
 GCP_ZONE="${GCP_ZONE:-us-central1-a}"
